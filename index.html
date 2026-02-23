@@ -645,6 +645,116 @@ function calcMACD(closes,fast=12,slow=26,sig=9){const eF=ema(closes,fast),eS=ema
 function calcATR(highs,lows,closes,n=14){const r=new Array(closes.length).fill(null),tr=new Array(closes.length).fill(null);for(let i=1;i<closes.length;i++)tr[i]=Math.max(highs[i]-lows[i],Math.abs(highs[i]-closes[i-1]),Math.abs(lows[i]-closes[i-1]));let s=0;for(let i=1;i<=n;i++)s+=tr[i];r[n]=s/n;for(let i=n+1;i<closes.length;i++)r[i]=(r[i-1]*(n-1)+tr[i])/n;return r;}
 
 // ═══════════════════════════════════════════════════════
+// DÉTECTION REVERSAL PATTERNS (BRAIN.md §4)
+// ═══════════════════════════════════════════════════════
+function detectReversalPatterns(candles){
+  const n=candles.length;if(n<3)return[];
+  const c0=candles[n-1],c1=candles[n-2],c2=candles[n-3];
+  const body=c=>Math.abs(c.c-c.o);
+  const up=c=>c.h-Math.max(c.o,c.c);
+  const dn=c=>Math.min(c.o,c.c)-c.l;
+  const rng=c=>c.h-c.l;
+  const bull=c=>c.c>c.o;
+  const bear=c=>c.c<c.o;
+  const doji=c=>body(c)<=rng(c)*0.1;
+  const mid=c=>(c.o+c.c)/2;
+  const p=[];
+
+  // ── BULLISH ──
+  // Hammer
+  const b0=body(c0),u0=up(c0),d0=dn(c0),r0=rng(c0);
+  if(b0>0&&d0>=2*b0&&u0<=b0*0.3&&Math.min(c0.o,c0.c)>c0.l+r0*0.5)
+    p.push({name:'Hammer',dir:'bull',strength:'moderate'});
+  // Inverted Hammer
+  if(b0>0&&u0>=2*b0&&d0<=b0*0.3&&Math.max(c0.o,c0.c)<c0.h-r0*0.5)
+    p.push({name:'Inverted Hammer',dir:'bull',strength:'weak'});
+  // Bullish Engulfing
+  if(bull(c0)&&bear(c1)&&c0.o<=c1.c&&c0.c>=c1.o&&body(c0)>body(c1))
+    p.push({name:'Engulfing Haussier',dir:'bull',strength:'moderate'});
+  // Shooting Star
+  if(b0>0&&u0>=2*b0&&d0<=b0*0.3&&Math.max(c0.o,c0.c)<c0.h-r0*0.5)
+    p.push({name:'Shooting Star',dir:'bear',strength:'moderate'});
+  // Hanging Man (same shape as hammer but bearish context)
+  if(b0>0&&d0>=2*b0&&u0<=b0*0.3&&bull(c1)&&bull(c2))
+    p.push({name:'Hanging Man',dir:'bear',strength:'moderate'});
+  // Bearish Engulfing
+  if(bear(c0)&&bull(c1)&&c0.o>=c1.c&&c0.c<=c1.o&&body(c0)>body(c1))
+    p.push({name:'Engulfing Baissier',dir:'bear',strength:'moderate'});
+  // Dragonfly Doji
+  if(doji(c0)&&d0>=r0*0.6&&u0<=r0*0.1)
+    p.push({name:'Dragonfly Doji',dir:'bull',strength:'moderate'});
+  // Gravestone Doji
+  if(doji(c0)&&u0>=r0*0.6&&d0<=r0*0.1)
+    p.push({name:'Gravestone Doji',dir:'bear',strength:'moderate'});
+  // Piercing Line
+  if(bear(c1)&&bull(c0)&&c0.o<c1.l&&c0.c>mid(c1)&&c0.c<c1.o)
+    p.push({name:'Piercing Line',dir:'bull',strength:'moderate'});
+  // Dark Cloud Cover
+  if(bull(c1)&&bear(c0)&&c0.o>c1.h&&c0.c<mid(c1)&&c0.c>c1.o)
+    p.push({name:'Dark Cloud Cover',dir:'bear',strength:'high'});
+  // Morning Star
+  if(bear(c2)&&body(c2)>rng(c2)*0.5&&body(c1)<rng(c1)*0.35&&bull(c0)&&body(c0)>rng(c0)*0.5&&c0.c>mid(c2))
+    p.push({name:'Morning Star',dir:'bull',strength:'moderate'});
+  // Evening Star
+  if(bull(c2)&&body(c2)>rng(c2)*0.5&&body(c1)<rng(c1)*0.35&&bear(c0)&&body(c0)>rng(c0)*0.5&&c0.c<mid(c2))
+    p.push({name:'Evening Star',dir:'bear',strength:'high'});
+  // Three White Soldiers
+  if(bull(c0)&&bull(c1)&&bull(c2)&&c0.c>c1.c&&c1.c>c2.c&&c0.o>c1.o&&c1.o>c2.o)
+    p.push({name:'Three White Soldiers',dir:'bull',strength:'high'});
+  // Three Black Crows
+  if(bear(c0)&&bear(c1)&&bear(c2)&&c0.c<c1.c&&c1.c<c2.c&&c0.o<c1.o&&c1.o<c2.o)
+    p.push({name:'Three Black Crows',dir:'bear',strength:'high'});
+  // Three Inside Up
+  if(bear(c2)&&bull(c1)&&c1.o>=c2.c&&c1.c<=c2.o&&bull(c0)&&c0.c>c2.o)
+    p.push({name:'Three Inside Up',dir:'bull',strength:'high'});
+  // Three Inside Down
+  if(bull(c2)&&bear(c1)&&c1.o<=c2.c&&c1.c>=c2.o&&bear(c0)&&c0.c<c2.o)
+    p.push({name:'Three Inside Down',dir:'bear',strength:'high'});
+  // Harami Bullish
+  if(bear(c1)&&bull(c0)&&c0.o>c1.c&&c0.c<c1.o&&body(c0)<body(c1)*0.5)
+    p.push({name:'Harami Haussier',dir:'bull',strength:'weak'});
+  // Harami Bearish
+  if(bull(c1)&&bear(c0)&&c0.o<c1.c&&c0.c>c1.o&&body(c0)<body(c1)*0.5)
+    p.push({name:'Harami Baissier',dir:'bear',strength:'weak'});
+
+  return p;
+}
+
+// ═══════════════════════════════════════════════════════
+// NIVEAUX CLÉS SUPPORT/RÉSISTANCE (BRAIN.md §5 — Extreme Money)
+// ═══════════════════════════════════════════════════════
+function detectKeyLevels(candles){
+  const n=candles.length;if(n<5)return null;
+  const last=candles[n-1];
+  const levels=[];
+
+  // Regrouper les bougies par semaine et par mois
+  const getWeek=ts=>{const d=new Date(ts);d.setHours(0,0,0,0);d.setDate(d.getDate()-d.getDay());return d.getTime();}
+  const getMonth=ts=>{const d=new Date(ts);return new Date(d.getFullYear(),d.getMonth(),1).getTime();}
+
+  const weeks={},months={};
+  candles.forEach(c=>{
+    const wk=getWeek(c.t);if(!weeks[wk])weeks[wk]={open:c.o,high:c.h,low:c.l};
+    else{weeks[wk].high=Math.max(weeks[wk].high,c.h);weeks[wk].low=Math.min(weeks[wk].low,c.l);}
+    const mo=getMonth(c.t);if(!months[mo])months[mo]={open:c.o,high:c.h,low:c.l};
+    else{months[mo].high=Math.max(months[mo].high,c.h);months[mo].low=Math.min(months[mo].low,c.l);}
+  });
+
+  const wkKeys=Object.keys(weeks).map(Number).sort((a,b)=>b-a);
+  const moKeys=Object.keys(months).map(Number).sort((a,b)=>b-a);
+
+  if(wkKeys.length>=1){const w=weeks[wkKeys[0]];levels.push({label:'Weekly Open',price:w.open,type:'WO'});levels.push({label:'Weekly High',price:w.high,type:'WH'});levels.push({label:'Weekly Low',price:w.low,type:'WL'});}
+  if(wkKeys.length>=2){const w=weeks[wkKeys[1]];levels.push({label:'Prev Week High',price:w.high,type:'PWH'});levels.push({label:'Prev Week Low',price:w.low,type:'PWL'});}
+  if(moKeys.length>=1){const m=months[moKeys[0]];levels.push({label:'Monthly Open',price:m.open,type:'MO'});levels.push({label:'Monthly High',price:m.high,type:'MH'});levels.push({label:'Monthly Low',price:m.low,type:'ML'});}
+  if(moKeys.length>=2){const m=months[moKeys[1]];levels.push({label:'Prev Month High',price:m.high,type:'PMH'});levels.push({label:'Prev Month Low',price:m.low,type:'PML'});}
+
+  // Trouver les niveaux proches du prix actuel (±1% ou ±ATR)
+  const price=last.c;
+  const near=levels.filter(l=>Math.abs(l.price-price)/price<0.012).sort((a,b)=>Math.abs(a.price-price)-Math.abs(b.price-price));
+  return{all:levels,near,price};
+}
+
+// ═══════════════════════════════════════════════════════
 // CERVEAU DU TRADER
 // ═══════════════════════════════════════════════════════
 function traderBrain(symbol,candles,capital,riskPct){
@@ -657,8 +767,10 @@ function traderBrain(symbol,candles,capital,riskPct){
   const atrA=calcATR(highs,lows,closes,14);
   const price=closes[n-1],ma20=ma20a[n-1],ma50=ma50a[n-1],ma200=ma200a[n-1];
   const rsiV=rsiA[n-1],macdV=macdL[n-1],macdSV=macdS[n-1],macdHV=macdH[n-1],atrV=atrA[n-1];
+  const patterns=detectReversalPatterns(candles);
+  const keyLvl=detectKeyLevels(candles);
   if(!ma200||!rsiV||!macdV||!atrV)
-    return{signal:'ATTENDRE',score:0,reasons:['Données insuffisantes (200 bougies minimum)'],warnings:[],price,ma20,ma50,ma200,rsiV,macdV,macdSV,macdHV,atrV,riskMgmt:null};
+    return{signal:'ATTENDRE',score:0,reasons:['Données insuffisantes (200 bougies minimum)'],warnings:[],price,ma20,ma50,ma200,rsiV,macdV,macdSV,macdHV,atrV,riskMgmt:null,patterns,keyLvl};
   const ma20slice=ma20a.slice(Math.max(0,n-5)).filter(v=>v!=null);
   const slopeMa20=ma20slice.length>=2?(ma20slice[ma20slice.length-1]-ma20slice[0])/ma20slice[0]*100:0;
   let direction;
@@ -692,6 +804,37 @@ function traderBrain(symbol,candles,capital,riskPct){
   else warnings.push('MACD non aligné avec la tendance');
   if(direction==='HAUSSE'&&price>ma50){score+=10;reasons.push('Prix au-dessus MA50 — zone haussière');}
   else if(direction==='BAISSE'&&price<ma50){score+=10;reasons.push('Prix sous MA50 — zone baissière');}
+
+  // ── Reversal Patterns (BRAIN.md §4)
+  const bullPat=patterns.filter(p=>p.dir==='bull');
+  const bearPat=patterns.filter(p=>p.dir==='bear');
+  if(direction==='HAUSSE'){
+    bullPat.forEach(p=>{
+      const bonus=p.strength==='high'?20:p.strength==='moderate'?10:5;
+      score+=bonus;reasons.push(`Pattern haussier détecté : ${p.name} (${p.strength==='high'?'haute':p.strength==='moderate'?'moyenne':'faible'} fiabilité)`);
+    });
+    bearPat.forEach(p=>{
+      if(p.strength==='high'){score-=10;warnings.push(`Pattern baissier contraire : ${p.name} — prudence`);}
+    });
+  }else if(direction==='BAISSE'){
+    bearPat.forEach(p=>{
+      const bonus=p.strength==='high'?20:p.strength==='moderate'?10:5;
+      score+=bonus;reasons.push(`Pattern baissier détecté : ${p.name} (${p.strength==='high'?'haute':p.strength==='moderate'?'moyenne':'faible'} fiabilité)`);
+    });
+    bullPat.forEach(p=>{
+      if(p.strength==='high'){score-=10;warnings.push(`Pattern haussier contraire : ${p.name} — prudence`);}
+    });
+  }
+
+  // ── Niveaux clés (BRAIN.md §5 — Extreme Money)
+  if(keyLvl?.near?.length>0){
+    const nearest=keyLvl.near[0];
+    const isSupport=nearest.price<price;
+    if(direction==='HAUSSE'&&isSupport){score+=10;reasons.push(`Prix sur support clé : ${nearest.label} (${nearest.price.toFixed(info.dec)})`);}
+    else if(direction==='BAISSE'&&!isSupport){score+=10;reasons.push(`Prix sur résistance clé : ${nearest.label} (${nearest.price.toFixed(info.dec)})`);}
+    else{warnings.push(`Niveau clé proche : ${nearest.label} (${nearest.price.toFixed(info.dec)}) — surveiller`);}
+  }
+
   score=Math.max(0,Math.min(100,score));
   let signal;
   if(score>=60&&direction==='HAUSSE')signal='ACHAT';
@@ -724,7 +867,7 @@ function traderBrain(symbol,candles,capital,riskPct){
     }
   }
   const conseil=CONSEILS[signal][Math.floor(Math.random()*3)];
-  return{signal,score,direction,slopeMa20,price,ma20,ma50,ma200,rsiV,macdV,macdSV,macdHV,atrV,riskMgmt,reasons,warnings,conseil};
+  return{signal,score,direction,slopeMa20,price,ma20,ma50,ma200,rsiV,macdV,macdSV,macdHV,atrV,riskMgmt,reasons,warnings,conseil,patterns,keyLvl};
 }
 
 // ═══════════════════════════════════════════════════════
@@ -746,7 +889,23 @@ function renderResult(res,symbol){
   const adviceBorder=res.signal==='ACHAT'?'var(--buy)':res.signal==='VENTE'?'var(--sell)':'var(--b3)';
   const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 
+  // ── Verdict résumé
+  const verdictColor=res.signal==='ACHAT'?'var(--buy)':res.signal==='VENTE'?'var(--sell)':'var(--dim)';
+  const topPattern=res.patterns?.filter(p=>p.strength!=='weak'&&((res.signal==='ACHAT'&&p.dir==='bull')||(res.signal==='VENTE'&&p.dir==='bear')))[0];
+  const topLevel=res.keyLvl?.near?.[0];
+  const verdictParts=[];
+  if(res.direction!=='NEUTRE')verdictParts.push(res.direction==='HAUSSE'?'Tendance haussière':'Tendance baissière');
+  if(topPattern)verdictParts.push(topPattern.name);
+  if(topLevel)verdictParts.push(topLevel.label);
+  const verdictSummary=verdictParts.length?verdictParts.join(' · '):'Aucune confluence — attendre';
+
   let h='<div class="result">';
+  h+=`<div style="border-left:3px solid ${verdictColor};padding:10px 14px;background:var(--s1);margin-bottom:16px;border-radius:2px">
+    <div style="font-family:var(--mono);font-size:.56rem;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;margin-bottom:4px">Verdict</div>
+    <div style="font-family:var(--mono);font-size:1rem;font-weight:600;color:${verdictColor};margin-bottom:3px">${res.signal==='ACHAT'?'▲ ACHETER':res.signal==='VENTE'?'▼ VENDRE':'◆ ATTENDRE'}</div>
+    <div style="font-size:.75rem;color:var(--body);line-height:1.5">${verdictSummary}</div>
+  </div>`;
+
   h+=`
   <div class="sig-block">
     <div class="sig-pair">${info.name} &nbsp;·&nbsp; ${state.tf.toUpperCase()} &nbsp;·&nbsp; ${now}</div>
@@ -816,6 +975,31 @@ function renderResult(res,symbol){
     res.warnings.forEach(w=>{h+=`<div class="log-item warn">${w}</div>`;});
     h+=`</div>`;
   }
+  // ── Reversal Patterns
+  if(res.patterns?.length){
+    h+=`<div class="log-block"><div class="log-title">Patterns de retournement détectés</div>`;
+    res.patterns.forEach(p=>{
+      const isAligned=(res.signal==='ACHAT'&&p.dir==='bull')||(res.signal==='VENTE'&&p.dir==='bear');
+      const color=isAligned?(p.strength==='high'?'var(--buy)':'var(--body)'):(p.strength==='high'?'var(--sell)':'var(--dim)');
+      const icon=p.dir==='bull'?'▲':'▼';
+      const tag=p.strength==='high'?'★★':p.strength==='moderate'?'★':'·';
+      h+=`<div class="log-item" style="color:${color}">${icon} ${p.name} <span style="color:var(--dim);font-size:.65rem">${tag}</span></div>`;
+    });
+    h+=`</div>`;
+  }
+
+  // ── Niveaux clés support/résistance
+  if(res.keyLvl?.near?.length){
+    h+=`<div class="log-block"><div class="log-title">Niveaux clés proches (Extreme Money)</div>`;
+    res.keyLvl.near.forEach(l=>{
+      const isBelow=l.price<res.price;
+      const typeColor=isBelow?'var(--buy)':'var(--sell)';
+      const typeLabel=isBelow?'Support':'Résistance';
+      h+=`<div class="log-item" style="display:flex;justify-content:space-between"><span style="color:${typeColor}">${l.label}</span><span style="font-family:var(--mono);color:var(--main)">${l.price.toFixed(d)} <span style="font-size:.6rem;color:var(--dim)">${typeLabel}</span></span></div>`;
+    });
+    h+=`</div>`;
+  }
+
   if(res.conseil){
     h+=`<div class="advice" style="border-left-color:${adviceBorder}"><div class="advice-tag">Trader Pro</div><div class="advice-txt">${res.conseil}</div></div>`;
   }

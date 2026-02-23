@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Trader Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#0d0f14; --card:#161923; --card2:#1e2230; --border:#2a2f42;
+  --gold:#f0b429; --green:#00d084; --green-dim:#003d25;
+  --red:#ff4757; --red-dim:#3d0010; --text:#e8eaf0; --muted:#6b7280;
+  --r:12px; --rs:8px;
+}
+html { font-size:16px; }
+body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding-bottom:50px; }
+
+/* HEADER */
+.header { background:linear-gradient(135deg,#161923,#0d1520); border-bottom:1px solid var(--border); padding:16px 20px 12px; text-align:center; position:sticky; top:0; z-index:20; }
+.header-title { font-size:1.1rem; font-weight:800; letter-spacing:.12em; background:linear-gradient(90deg,var(--gold),#ffd766); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.header-sub { font-size:.65rem; color:var(--muted); margin-top:2px; }
+
+/* TABS */
+.tabs { display:flex; border-bottom:1px solid var(--border); background:var(--card); }
+.tab { flex:1; padding:12px; text-align:center; font-size:.8rem; font-weight:600; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; transition:all .2s; }
+.tab.active { color:var(--gold); border-bottom-color:var(--gold); }
+
+/* LAYOUT */
+.app { max-width:480px; margin:0 auto; padding:14px 12px; }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+
+/* CARD */
+.card { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:14px; margin-bottom:10px; }
+.card-title { font-size:.62rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+.card-title::before { content:''; display:inline-block; width:3px; height:11px; background:var(--gold); border-radius:2px; }
+
+/* INPUTS */
+.field { margin-bottom:10px; }
+.field:last-child { margin-bottom:0; }
+label { display:block; font-size:.7rem; font-weight:600; color:var(--muted); margin-bottom:4px; }
+input[type="number"], select {
+  width:100%; background:var(--card2); border:1.5px solid var(--border); border-radius:var(--rs);
+  color:var(--text); font-family:'Inter',sans-serif; font-size:.95rem; font-weight:600;
+  padding:10px 12px; outline:none; transition:border-color .2s; -moz-appearance:textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance:none; }
+input:focus, select:focus { border-color:var(--gold); }
+select { cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; background-color:var(--card2); padding-right:36px; }
+
+/* TIMEFRAME BUTTONS */
+.tf-row { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+.btn-tf { padding:9px 4px; border-radius:var(--rs); border:1.5px solid var(--border); background:var(--card2); color:var(--muted); font-family:'Inter',sans-serif; font-size:.82rem; font-weight:700; cursor:pointer; text-align:center; transition:all .15s; }
+.btn-tf.active { background:rgba(240,180,41,.1); border-color:var(--gold); color:var(--gold); }
+
+/* RISK BUTTONS */
+.risk-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+.btn-risk { padding:10px 4px; border-radius:var(--rs); border:1.5px solid var(--border); background:var(--card2); color:var(--muted); font-family:'Inter',sans-serif; font-size:.82rem; font-weight:700; cursor:pointer; text-align:center; transition:all .15s; }
+.btn-risk.active { background:rgba(240,180,41,.12); border-color:var(--gold); color:var(--gold); }
+
+/* CTA BUTTON */
+.btn-analyse { width:100%; padding:14px; background:linear-gradient(135deg,#c79215,var(--gold)); border:none; border-radius:var(--rs); color:#0d0f14; font-family:'Inter',sans-serif; font-size:1rem; font-weight:800; letter-spacing:.06em; cursor:pointer; transition:opacity .2s; margin-top:4px; }
+.btn-analyse:hover { opacity:.9; }
+.btn-analyse:disabled { opacity:.5; cursor:not-allowed; }
+
+/* LOADING */
+.loading-box { text-align:center; padding:30px 20px; }
+.spinner-big { width:40px; height:40px; border:3px solid var(--border); border-top-color:var(--gold); border-radius:50%; animation:spin .8s linear infinite; margin:0 auto 12px; }
+.loading-text { font-size:.82rem; color:var(--muted); }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* SIGNAL MAIN */
+.signal-box { text-align:center; padding:20px 16px 16px; border-radius:var(--r); margin-bottom:10px; }
+.signal-box.buy  { background:linear-gradient(135deg,rgba(0,208,132,.08),rgba(0,208,132,.02)); border:1px solid rgba(0,208,132,.3); }
+.signal-box.sell { background:linear-gradient(135deg,rgba(255,71,87,.08),rgba(255,71,87,.02)); border:1px solid rgba(255,71,87,.3); }
+.signal-box.wait { background:linear-gradient(135deg,rgba(240,180,41,.06),rgba(240,180,41,.01)); border:1px solid rgba(240,180,41,.2); }
+.signal-label { font-size:.6rem; font-weight:700; letter-spacing:.15em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+.signal-val { font-size:2rem; font-weight:800; line-height:1; }
+.signal-val.buy  { color:var(--green); }
+.signal-val.sell { color:var(--red); }
+.signal-val.wait { color:var(--gold); }
+.signal-score { font-size:.75rem; color:var(--muted); margin-top:6px; }
+
+/* SCORE BAR */
+.score-bar-wrap { height:6px; background:var(--card2); border-radius:3px; margin:8px auto; max-width:200px; overflow:hidden; }
+.score-bar { height:100%; border-radius:3px; transition:width .5s ease; }
+
+/* 2-COL GRID */
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+.info-box { background:var(--card); border:1px solid var(--border); border-radius:var(--rs); padding:11px; }
+.info-box-label { font-size:.6rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:3px; }
+.info-box-val { font-size:1rem; font-weight:700; }
+.info-box-sub { font-size:.62rem; color:var(--muted); margin-top:2px; }
+.c-green { color:var(--green); }
+.c-red   { color:var(--red); }
+.c-gold  { color:var(--gold); }
+.c-text  { color:var(--text); }
+
+/* RR BADGE */
+.rr-badge { display:inline-flex; align-items:center; gap:5px; padding:5px 12px; border-radius:20px; font-size:.8rem; font-weight:700; }
+.rr-good { background:var(--green-dim); color:var(--green); border:1px solid var(--green); }
+.rr-ok   { background:rgba(240,180,41,.1); color:var(--gold); border:1px solid var(--gold); }
+.rr-bad  { background:var(--red-dim); color:var(--red); border:1px solid var(--red); }
+
+/* REASONS */
+.list-box { background:var(--card); border:1px solid var(--border); border-radius:var(--rs); padding:10px 12px; margin-bottom:8px; }
+.list-title { font-size:.62rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; }
+.list-item { display:flex; gap:8px; align-items:flex-start; margin-bottom:4px; font-size:.75rem; color:var(--text); line-height:1.4; }
+.list-item:last-child { margin-bottom:0; }
+.list-icon { flex-shrink:0; }
+.list-item.warn { color:#fbbf24; }
+
+/* ADVICE */
+.advice-box { background:linear-gradient(135deg,rgba(240,180,41,.06),rgba(240,180,41,.01)); border:1px solid rgba(240,180,41,.2); border-radius:var(--r); padding:14px 16px; text-align:center; margin-bottom:10px; }
+.advice-text { font-size:.82rem; font-style:italic; color:var(--text); line-height:1.5; }
+.advice-label { font-size:.6rem; font-weight:700; color:var(--gold); letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px; }
+
+/* ERROR */
+.error-box { background:var(--red-dim); border:1px solid var(--red); border-radius:var(--rs); padding:12px 14px; margin-bottom:10px; font-size:.8rem; color:var(--red); }
+
+/* SCAN TABLE */
+.scan-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+table { width:100%; border-collapse:collapse; font-size:.75rem; }
+th { text-align:center; padding:8px 5px; color:var(--muted); font-weight:600; font-size:.62rem; text-transform:uppercase; letter-spacing:.06em; border-bottom:1px solid var(--border); }
+td { text-align:center; padding:7px 5px; border-bottom:1px solid rgba(42,47,66,.5); }
+tr.row-buy  td { background:rgba(0,208,132,.04); }
+tr.row-sell td { background:rgba(255,71,87,.04); }
+
+/* PROGRESS */
+.progress-wrap { margin:10px 0; }
+.progress-bar-bg { height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
+.progress-bar-fill { height:100%; background:var(--gold); border-radius:2px; transition:width .3s; }
+.progress-label { font-size:.7rem; color:var(--muted); margin-top:4px; }
+
+/* SCAN SUMMARY */
+.scan-summary { display:flex; gap:8px; margin-bottom:10px; }
+.sum-box { flex:1; background:var(--card); border:1px solid var(--border); border-radius:var(--rs); padding:10px; text-align:center; }
+.sum-val { font-size:1.4rem; font-weight:800; }
+.sum-label { font-size:.6rem; color:var(--muted); text-transform:uppercase; margin-top:2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">TRADER PRO</div>
+  <div class="header-sub">Analyse technique · Principes Traders_Pro.pdf</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('analyser')">Analyser</div>
+  <div class="tab" onclick="switchTab('scanner')">Scanner Forex</div>
+</div>
+
+<!-- ══════════════ TAB ANALYSER ══════════════ -->
+<div class="app">
+<div class="tab-content active" id="tab-analyser">
+
+  <div class="card">
+    <div class="card-title">Marché</div>
+    <div class="field">
+      <label>Paire</label>
+      <select id="pairSelect">
+        <optgroup label="── Majeures ──">
+          <option value="EURUSD=X">EUR/USD</option>
+          <option value="GBPUSD=X" selected>GBP/USD</option>
+          <option value="USDJPY=X">USD/JPY</option>
+          <option value="USDCHF=X">USD/CHF</option>
+          <option value="AUDUSD=X">AUD/USD</option>
+          <option value="USDCAD=X">USD/CAD</option>
+          <option value="NZDUSD=X">NZD/USD</option>
+        </optgroup>
+        <optgroup label="── EUR Cross ──">
+          <option value="EURGBP=X">EUR/GBP</option>
+          <option value="EURJPY=X">EUR/JPY</option>
+          <option value="EURAUD=X">EUR/AUD</option>
+          <option value="EURCAD=X">EUR/CAD</option>
+        </optgroup>
+        <optgroup label="── GBP Cross ──">
+          <option value="GBPJPY=X">GBP/JPY</option>
+          <option value="GBPAUD=X">GBP/AUD</option>
+          <option value="GBPCAD=X">GBP/CAD</option>
+        </optgroup>
+        <optgroup label="── Indices ──">
+          <option value="^FCHI">CAC 40</option>
+          <option value="^IXIC">NASDAQ</option>
+          <option value="^GSPC">S&P 500</option>
+          <option value="^DJI">Dow Jones</option>
+          <option value="^GDAXI">DAX</option>
+        </optgroup>
+        <optgroup label="── Commodités ──">
+          <option value="GC=F">Or (Gold)</option>
+          <option value="CL=F">Pétrole (WTI)</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="field">
+      <label>Timeframe</label>
+      <div class="tf-row">
+        <button class="btn-tf" data-tf="60m" onclick="setTF(this,'60m')">1H</button>
+        <button class="btn-tf active" data-tf="1d" onclick="setTF(this,'1d')">1J</button>
+        <button class="btn-tf" data-tf="1wk" onclick="setTF(this,'1wk')">1SEM</button>
+        <button class="btn-tf" data-tf="1mo" onclick="setTF(this,'1mo')">1MOIS</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Money Management</div>
+    <div class="field">
+      <label>Capital (€)</label>
+      <input type="number" id="capitalInput" value="1000" min="1" step="100">
+    </div>
+    <div class="field">
+      <label>Risque par trade</label>
+      <div class="risk-grid">
+        <button class="btn-risk" data-r="1"  onclick="setRisk(this,1)">1%</button>
+        <button class="btn-risk" data-r="2"  onclick="setRisk(this,2)">2%</button>
+        <button class="btn-risk" data-r="3"  onclick="setRisk(this,3)">3%</button>
+        <button class="btn-risk" data-r="5"  onclick="setRisk(this,5)">5%</button>
+        <button class="btn-risk active" data-r="10" onclick="setRisk(this,10)">10%</button>
+        <button class="btn-risk" data-r="15" onclick="setRisk(this,15)">15%</button>
+        <button class="btn-risk" data-r="20" onclick="setRisk(this,20)">20%</button>
+        <button class="btn-risk" data-r="30" onclick="setRisk(this,30)">30%</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-analyse" id="btnAnalyse" onclick="runAnalysis()">⟳ Analyser</button>
+
+  <div id="analysisResult" style="margin-top:12px"></div>
+</div>
+
+<!-- ══════════════ TAB SCANNER ══════════════ -->
+<div class="tab-content" id="tab-scanner">
+
+  <div class="card">
+    <div class="card-title">Scanner toutes les paires Forex</div>
+    <div class="field">
+      <label>Timeframe</label>
+      <div class="tf-row">
+        <button class="btn-tf" data-stf="60m" onclick="setScanTF(this,'60m')">1H</button>
+        <button class="btn-tf active" data-stf="1d" onclick="setScanTF(this,'1d')">1J</button>
+        <button class="btn-tf" data-stf="1wk" onclick="setScanTF(this,'1wk')">1SEM</button>
+        <button class="btn-tf" data-stf="1mo" onclick="setScanTF(this,'1mo')">1MOIS</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-analyse" id="btnScan" onclick="runScan()">🔍 Scanner toutes les paires</button>
+
+  <div id="scanResult" style="margin-top:12px"></div>
+</div>
+</div><!-- /app -->
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// CONSTANTES
+// ══════════════════════════════════════════════════════════════
+const PAIR_INFO = {
+  'EURUSD=X':{ name:'EUR/USD', pipMult:10000, pipVal:8.50, dec:5 },
+  'GBPUSD=X':{ name:'GBP/USD', pipMult:10000, pipVal:8.50, dec:5 },
+  'USDJPY=X':{ name:'USD/JPY', pipMult:100,   pipVal:5.65, dec:3 },
+  'USDCHF=X':{ name:'USD/CHF', pipMult:10000, pipVal:7.90, dec:5 },
+  'AUDUSD=X':{ name:'AUD/USD', pipMult:10000, pipVal:8.50, dec:5 },
+  'USDCAD=X':{ name:'USD/CAD', pipMult:10000, pipVal:6.10, dec:5 },
+  'NZDUSD=X':{ name:'NZD/USD', pipMult:10000, pipVal:8.50, dec:5 },
+  'EURGBP=X':{ name:'EUR/GBP', pipMult:10000, pipVal:11.05,dec:5 },
+  'EURJPY=X':{ name:'EUR/JPY', pipMult:100,   pipVal:5.50, dec:3 },
+  'EURAUD=X':{ name:'EUR/AUD', pipMult:10000, pipVal:6.00, dec:5 },
+  'EURCAD=X':{ name:'EUR/CAD', pipMult:10000, pipVal:6.00, dec:5 },
+  'GBPJPY=X':{ name:'GBP/JPY', pipMult:100,   pipVal:5.50, dec:3 },
+  'GBPAUD=X':{ name:'GBP/AUD', pipMult:10000, pipVal:5.95, dec:5 },
+  'GBPCAD=X':{ name:'GBP/CAD', pipMult:10000, pipVal:5.95, dec:5 },
+  '^FCHI':   { name:'CAC 40',  pipMult:1,     pipVal:0.93, dec:2 },
+  '^IXIC':   { name:'NASDAQ',  pipMult:1,     pipVal:0.93, dec:2 },
+  '^GSPC':   { name:'S&P 500', pipMult:1,     pipVal:0.93, dec:2 },
+  '^DJI':    { name:'Dow Jones',pipMult:1,    pipVal:0.93, dec:2 },
+  '^GDAXI':  { name:'DAX',     pipMult:1,     pipVal:0.93, dec:2 },
+  'GC=F':    { name:'Or/Gold', pipMult:100,   pipVal:0.93, dec:2 },
+  'CL=F':    { name:'Pétrole', pipMult:100,   pipVal:0.93, dec:2 },
+};
+
+const FOREX_SCAN_PAIRS = ['EURUSD=X','GBPUSD=X','USDJPY=X','USDCHF=X','AUDUSD=X','USDCAD=X','NZDUSD=X','EURGBP=X','EURJPY=X','EURAUD=X','EURCAD=X','GBPJPY=X','GBPAUD=X','GBPCAD=X'];
+
+const RANGE_MAP = { '60m':'60d', '1d':'1y', '1wk':'5y', '1mo':'10y' };
+
+const CONSEILS = {
+  ACHAT:    ["La tendance est ton amie. Achète dans le sens du marché.", "Signal d'achat confirmé. Pose ton stop-loss et laisse le trade travailler.", "Le marché monte. Entre avec discipline et respecte ton plan."],
+  VENTE:    ["La tendance est baissière. Vends dans le sens du courant.", "Signal de vente confirmé. Définis ton risque avant tout.", "Le marché baisse. Suis la tendance, c'est ta meilleure alliée."],
+  ATTENDRE: ["Pas de signal clair. Le trader gagnant sait aussi NE PAS trader.", "Patience. Attendre un bon setup vaut mieux que trader n'importe comment.", "Le marché n'est pas clair. Préserve ton capital et attends la bonne occasion."],
+};
+
+// ══════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════
+let state = { tf:'1d', scanTf:'1d', riskPct:10 };
+
+function setTF(btn, tf) {
+  state.tf = tf;
+  document.querySelectorAll('#tab-analyser .btn-tf').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function setScanTF(btn, tf) {
+  state.scanTf = tf;
+  document.querySelectorAll('#tab-scanner .btn-tf').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function setRisk(btn, r) {
+  state.riskPct = r;
+  document.querySelectorAll('.btn-risk').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['analyser','scanner'][i]===name));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════════════
+// FETCH DONNÉES (Yahoo Finance via CORS proxy)
+// ══════════════════════════════════════════════════════════════
+async function fetchCandles(symbol, interval, range) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}&includePrePost=false`;
+  const proxies = [
+    `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  ];
+
+  let lastErr = null;
+  for (const proxy of proxies) {
+    try {
+      const res = await fetch(proxy, { signal: AbortSignal.timeout(12000) });
+      if (!res.ok) { lastErr = `HTTP ${res.status}`; continue; }
+      const json = await res.json();
+      const result = json?.chart?.result?.[0];
+      if (!result?.timestamp) { lastErr = 'Pas de données'; continue; }
+
+      const ts = result.timestamp;
+      const q  = result.indicators.quote[0];
+      const candles = [];
+      for (let i = 0; i < ts.length; i++) {
+        if (q.close[i] != null && q.open[i] != null && q.high[i] != null && q.low[i] != null) {
+          candles.push({ t:ts[i]*1000, o:q.open[i], h:q.high[i], l:q.low[i], c:q.close[i] });
+        }
+      }
+      if (candles.length < 50) { lastErr = `Seulement ${candles.length} bougies`; continue; }
+      return candles;
+    } catch(e) { lastErr = e.message; }
+  }
+  throw new Error(lastErr || 'Échec de la requête');
+}
+
+// ══════════════════════════════════════════════════════════════
+// INDICATEURS TECHNIQUES
+// ══════════════════════════════════════════════════════════════
+function sma(arr, n) {
+  const r = new Array(arr.length).fill(null);
+  for (let i = n-1; i < arr.length; i++) {
+    let s = 0; for (let j = 0; j < n; j++) s += arr[i-j];
+    r[i] = s / n;
+  }
+  return r;
+}
+
+function ema(arr, n) {
+  const k = 2 / (n+1), r = new Array(arr.length).fill(null);
+  let start = n-1, s = 0;
+  for (let i = 0; i < n; i++) s += arr[i];
+  r[start] = s / n;
+  for (let i = start+1; i < arr.length; i++) r[i] = arr[i]*k + r[i-1]*(1-k);
+  return r;
+}
+
+function calcRSI(closes, n=14) {
+  const r = new Array(closes.length).fill(null);
+  if (closes.length < n+1) return r;
+  let avgG=0, avgL=0;
+  for (let i=1; i<=n; i++) {
+    const d = closes[i]-closes[i-1];
+    if (d>0) avgG+=d; else avgL-=d;
+  }
+  avgG/=n; avgL/=n;
+  r[n] = avgL===0 ? 100 : 100 - 100/(1+avgG/avgL);
+  for (let i=n+1; i<closes.length; i++) {
+    const d = closes[i]-closes[i-1];
+    avgG = (avgG*(n-1)+Math.max(0,d))/n;
+    avgL = (avgL*(n-1)+Math.max(0,-d))/n;
+    r[i] = avgL===0 ? 100 : 100 - 100/(1+avgG/avgL);
+  }
+  return r;
+}
+
+function calcMACD(closes, fast=12, slow=26, sig=9) {
+  const eF=ema(closes,fast), eS=ema(closes,slow);
+  const ml = closes.map((_,i) => eF[i]!=null&&eS[i]!=null ? eF[i]-eS[i] : null);
+  const sl = new Array(closes.length).fill(null);
+  const fi = ml.findIndex(v=>v!=null);
+  if (fi>=0 && fi+sig<closes.length) {
+    let s=0; for (let i=fi;i<fi+sig;i++) s+=ml[i];
+    sl[fi+sig-1]=s/sig;
+    const k=2/(sig+1);
+    for (let i=fi+sig;i<closes.length;i++) sl[i]=ml[i]*k+sl[i-1]*(1-k);
+  }
+  const hist = closes.map((_,i)=>ml[i]!=null&&sl[i]!=null?ml[i]-sl[i]:null);
+  return { ml, sl, hist };
+}
+
+function calcATR(highs, lows, closes, n=14) {
+  const r = new Array(closes.length).fill(null);
+  const tr = new Array(closes.length).fill(null);
+  for (let i=1;i<closes.length;i++) {
+    tr[i] = Math.max(highs[i]-lows[i], Math.abs(highs[i]-closes[i-1]), Math.abs(lows[i]-closes[i-1]));
+  }
+  let s=0; for (let i=1;i<=n;i++) s+=tr[i]; r[n]=s/n;
+  for (let i=n+1;i<closes.length;i++) r[i]=(r[i-1]*(n-1)+tr[i])/n;
+  return r;
+}
+
+// ══════════════════════════════════════════════════════════════
+// CERVEAU DU TRADER
+// Traduit fidèlement depuis brain/trader_mind.py
+// ══════════════════════════════════════════════════════════════
+function traderBrain(symbol, candles, capital, riskPct) {
+  const info = PAIR_INFO[symbol] || { pipMult:10000, pipVal:8.5, dec:5 };
+  const closes = candles.map(c=>c.c);
+  const highs   = candles.map(c=>c.h);
+  const lows    = candles.map(c=>c.l);
+  const n = closes.length;
+
+  // Indicateurs
+  const ma20a  = sma(closes, 20);
+  const ma50a  = sma(closes, 50);
+  const ma200a = sma(closes, 200);
+  const rsiA   = calcRSI(closes, 14);
+  const { ml:macdL, sl:macdS, hist:macdH } = calcMACD(closes);
+  const atrA   = calcATR(highs, lows, closes, 14);
+
+  const price = closes[n-1];
+  const ma20  = ma20a[n-1];
+  const ma50  = ma50a[n-1];
+  const ma200 = ma200a[n-1];
+  const rsiV  = rsiA[n-1];
+  const macdV = macdL[n-1];
+  const macdSV= macdS[n-1];
+  const macdHV= macdH[n-1];
+  const atrV  = atrA[n-1];
+
+  if (!ma200 || !rsiV || !macdV || !atrV)
+    return { signal:'ATTENDRE', score:0, reasons:['Données insuffisantes (besoin de 200 bougies minimum)'], warnings:[], price, ma20, ma50, ma200, rsiV, macdV, macdSV, macdHV, atrV, riskMgmt:null };
+
+  // Pente MA20 sur 5 dernières valeurs
+  const ma20slice = ma20a.slice(Math.max(0,n-5)).filter(v=>v!=null);
+  const slopeMa20 = ma20slice.length>=2
+    ? (ma20slice[ma20slice.length-1]-ma20slice[0])/ma20slice[0]*100
+    : 0;
+
+  // Direction de tendance
+  let direction;
+  if (ma20>ma50 && slopeMa20>0)       direction='HAUSSE';
+  else if (ma20<ma50 && slopeMa20<0)  direction='BAISSE';
+  else                                 direction='NEUTRE';
+
+  let score=0;
+  const reasons=[], warnings=[];
+
+  // ── TENDANCE (50 pts max) ──
+  if (direction==='HAUSSE') {
+    score+=25; reasons.push('Tendance haussière confirmée (MA20 > MA50)');
+    if (ma50<ma200) warnings.push('MA50 toujours sous MA200 — tendance de fond baissière');
+    else { score+=15; reasons.push('Tendance long terme haussière (MA50 > MA200)'); }
+    if (slopeMa20>0.05) { score+=10; reasons.push('Pente MA20 positive — accélération haussière'); }
+  } else if (direction==='BAISSE') {
+    score+=25; reasons.push('Tendance baissière confirmée (MA20 < MA50)');
+    if (ma50>ma200) warnings.push('MA50 toujours au-dessus MA200 — tendance de fond haussière');
+    else { score+=15; reasons.push('Tendance long terme baissière (MA50 < MA200)'); }
+    if (slopeMa20<-0.05) { score+=10; reasons.push('Pente MA20 négative — accélération baissière'); }
+  } else {
+    warnings.push('Tendance neutre/indécise — marché sans direction claire');
+  }
+
+  // ── MOMENTUM RSI (20 pts max) ──
+  if (direction==='HAUSSE') {
+    if (rsiV>=45 && rsiV<=60) { score+=20; reasons.push(`RSI favorable pour achat (${rsiV.toFixed(1)})`); }
+    else if (rsiV<=30)        { score+=15; reasons.push(`RSI en survente (${rsiV.toFixed(1)}) — rebond possible`); }
+    else if (rsiV>=70)        { score-=10; warnings.push(`RSI en surachat (${rsiV.toFixed(1)}) — risque de correction`); }
+  } else if (direction==='BAISSE') {
+    if (rsiV>=40 && rsiV<=55) { score+=20; reasons.push(`RSI favorable pour vente (${rsiV.toFixed(1)})`); }
+    else if (rsiV>=70)        { score+=15; reasons.push(`RSI en surachat (${rsiV.toFixed(1)}) — baisse possible`); }
+    else if (rsiV<=30)        { score-=10; warnings.push(`RSI en survente (${rsiV.toFixed(1)}) — risque de rebond`); }
+  }
+
+  // ── MACD (20 pts max) ──
+  const macdBull = macdV>macdSV && macdHV>0;
+  const macdBear = macdV<macdSV && macdHV<0;
+  if (direction==='HAUSSE' && macdBull)       { score+=20; reasons.push('MACD haussier — momentum confirmé'); }
+  else if (direction==='BAISSE' && macdBear)  { score+=20; reasons.push('MACD baissier — momentum confirmé'); }
+  else                                         { warnings.push('MACD non aligné avec la tendance'); }
+
+  // ── PRIX vs MA50 (10 pts max) ──
+  if (direction==='HAUSSE' && price>ma50)     { score+=10; reasons.push('Prix au-dessus de la MA50 — zone haussière'); }
+  else if (direction==='BAISSE' && price<ma50){ score+=10; reasons.push('Prix en-dessous de la MA50 — zone baissière'); }
+
+  score = Math.max(0, Math.min(100, score));
+
+  // ── SIGNAL ──
+  let signal;
+  if (score>=60 && direction==='HAUSSE')      signal='ACHAT';
+  else if (score>=60 && direction==='BAISSE') signal='VENTE';
+  else { signal='ATTENDRE'; reasons.push(`Score insuffisant (${score}/100) — on attend`); }
+
+  // ── GESTION DU RISQUE ──
+  let riskMgmt = null;
+  if (signal!=='ATTENDRE') {
+    const slDist  = atrV * 1.5;
+    const tp1Dist = atrV * 2.5;
+    const tp2Dist = atrV * 4.0;
+    const sl  = signal==='ACHAT' ? price-slDist  : price+slDist;
+    const tp1 = signal==='ACHAT' ? price+tp1Dist : price-tp1Dist;
+    const tp2 = signal==='ACHAT' ? price+tp2Dist : price-tp2Dist;
+
+    const slPips  = Math.abs(price-sl)  * info.pipMult;
+    const tp1Pips = Math.abs(price-tp1) * info.pipMult;
+    const tp2Pips = Math.abs(price-tp2) * info.pipMult;
+    const rr      = tp1Pips / slPips;
+
+    if (rr < 2.0) {
+      warnings.push(`Ratio R/R insuffisant (1:${rr.toFixed(1)}) — minimum requis: 1:2`);
+      signal = 'ATTENDRE';
+    } else {
+      const riskEur = capital * riskPct / 100;
+      const lots    = Math.floor((riskEur / (slPips * info.pipVal)) * 100) / 100;
+      const realRisk= slPips * info.pipVal * lots;
+      riskMgmt = {
+        entry: price.toFixed(info.dec),
+        sl:    sl.toFixed(info.dec),
+        tp1:   tp1.toFixed(info.dec),
+        tp2:   tp2.toFixed(info.dec),
+        slPips:  slPips.toFixed(1),
+        tp1Pips: tp1Pips.toFixed(1),
+        tp2Pips: tp2Pips.toFixed(1),
+        lots:    lots.toFixed(2),
+        rr:      rr.toFixed(2),
+        riskEur: realRisk.toFixed(2),
+        profit1: (tp1Pips * info.pipVal * lots).toFixed(2),
+        profit2: (tp2Pips * info.pipVal * lots).toFixed(2),
+      };
+    }
+  }
+
+  const conseil = CONSEILS[signal][Math.floor(Math.random()*3)];
+  return { signal, score, direction, slopeMa20, price, ma20, ma50, ma200, rsiV, macdV, macdSV, macdHV, atrV, riskMgmt, reasons, warnings, conseil };
+}
+
+// ══════════════════════════════════════════════════════════════
+// RENDU DES RÉSULTATS
+// ══════════════════════════════════════════════════════════════
+function renderResult(res, symbol) {
+  const info = PAIR_INFO[symbol] || { name: symbol };
+  const sigClass = res.signal==='ACHAT'?'buy':res.signal==='VENTE'?'sell':'wait';
+  const sigLabel = res.signal==='ACHAT'?'▲ ACHAT':res.signal==='VENTE'?'▼ VENTE':'◆ ATTENDRE';
+  const forceLabel = res.score>=80?'FORT':res.score>=60?'MOYEN':'FAIBLE';
+  const barColor = res.score>=70?'#00d084':res.score>=50?'#f0b429':'#ff4757';
+  const dirColor = res.direction==='HAUSSE'?'#00d084':res.direction==='BAISSE'?'#ff4757':'#f0b429';
+  const macdSig  = res.macdV>res.macdSV&&res.macdHV>0?'HAUSSIER':res.macdV<res.macdSV&&res.macdHV<0?'BAISSIER':'NEUTRE';
+  const macdColor= macdSig==='HAUSSIER'?'c-green':macdSig==='BAISSIER'?'c-red':'c-gold';
+  const rsiColor = res.rsiV>=70?'c-red':res.rsiV<=30?'c-green':'c-text';
+
+  let html = `
+  <div class="signal-box ${sigClass}">
+    <div class="signal-label">${info.name} · ${state.tf.toUpperCase()}</div>
+    <div class="signal-val ${sigClass}">${sigLabel}</div>
+    <div class="score-bar-wrap"><div class="score-bar" style="width:${res.score}%;background:${barColor}"></div></div>
+    <div class="signal-score">Score ${res.score}/100 · Force : ${forceLabel}</div>
+  </div>
+
+  <div class="grid2">
+    <div class="info-box">
+      <div class="info-box-label">Prix actuel</div>
+      <div class="info-box-val c-gold">${res.price?.toFixed(PAIR_INFO[symbol]?.dec??5)}</div>
+    </div>
+    <div class="info-box">
+      <div class="info-box-label">Tendance</div>
+      <div class="info-box-val" style="color:${dirColor}">${res.direction==='HAUSSE'?'▲':res.direction==='BAISSE'?'▼':'—'} ${res.direction}</div>
+      <div class="info-box-sub">Pente MA20 : ${res.slopeMa20?.toFixed(3)}%</div>
+    </div>
+    <div class="info-box">
+      <div class="info-box-label">RSI (14)</div>
+      <div class="info-box-val ${rsiColor}">${res.rsiV?.toFixed(1)}</div>
+      <div class="info-box-sub">${res.rsiV>=70?'SURACHAT':res.rsiV<=30?'SURVENTE':'Neutre'}</div>
+    </div>
+    <div class="info-box">
+      <div class="info-box-label">MACD</div>
+      <div class="info-box-val ${macdColor}">${macdSig}</div>
+      <div class="info-box-sub">Hist : ${res.macdHV?.toFixed(6)}</div>
+    </div>
+    <div class="info-box">
+      <div class="info-box-label">MA20</div>
+      <div class="info-box-val c-text">${res.ma20?.toFixed(PAIR_INFO[symbol]?.dec??5)}</div>
+    </div>
+    <div class="info-box">
+      <div class="info-box-label">MA50</div>
+      <div class="info-box-val c-text">${res.ma50?.toFixed(PAIR_INFO[symbol]?.dec??5)}</div>
+    </div>
+  </div>`;
+
+  // Gestion du risque
+  if (res.riskMgmt) {
+    const rm = res.riskMgmt;
+    const rrN = parseFloat(rm.rr);
+    const rrCls = rrN>=2?'rr-good':rrN>=1.5?'rr-ok':'rr-bad';
+    html += `
+  <div class="card">
+    <div class="card-title">Plan de Trade — Gestion du risque</div>
+    <div class="grid2">
+      <div class="info-box">
+        <div class="info-box-label">Lot recommandé</div>
+        <div class="info-box-val c-gold" style="font-size:1.5rem">${rm.lots}</div>
+        <div class="info-box-sub">Risque : ${rm.riskEur} €</div>
+      </div>
+      <div class="info-box">
+        <div class="info-box-label">Ratio R/R</div>
+        <div class="info-box-val"><span class="rr-badge ${rrCls}">1:${rm.rr}</span></div>
+      </div>
+      <div class="info-box">
+        <div class="info-box-label">🛑 Stop Loss</div>
+        <div class="info-box-val c-red">${rm.sl}</div>
+        <div class="info-box-sub">${rm.slPips} pips</div>
+      </div>
+      <div class="info-box">
+        <div class="info-box-label">✅ Take Profit 1</div>
+        <div class="info-box-val c-green">${rm.tp1}</div>
+        <div class="info-box-sub">${rm.tp1Pips} pips · +${rm.profit1} €</div>
+      </div>
+      <div class="info-box">
+        <div class="info-box-label">ATR (volatilité)</div>
+        <div class="info-box-val c-text">${res.atrV?.toFixed(PAIR_INFO[symbol]?.dec??5)}</div>
+      </div>
+      <div class="info-box">
+        <div class="info-box-label">✅ Take Profit 2</div>
+        <div class="info-box-val c-green">${rm.tp2}</div>
+        <div class="info-box-sub">${rm.tp2Pips} pips · +${rm.profit2} €</div>
+      </div>
+    </div>
+  </div>`;
+  }
+
+  // Raisons
+  if (res.reasons?.length) {
+    html += `<div class="list-box"><div class="list-title">Pourquoi ce signal ?</div>`;
+    res.reasons.forEach(r => { html+=`<div class="list-item"><span class="list-icon c-green">✓</span>${r}</div>`; });
+    html += `</div>`;
+  }
+
+  // Avertissements
+  if (res.warnings?.length) {
+    html += `<div class="list-box"><div class="list-title" style="color:#fbbf24">Points d'attention</div>`;
+    res.warnings.forEach(w => { html+=`<div class="list-item warn"><span class="list-icon">⚠</span>${w}</div>`; });
+    html += `</div>`;
+  }
+
+  // Conseil du trader
+  if (res.conseil) {
+    html += `<div class="advice-box"><div class="advice-label">Le Trader Pro dit :</div><div class="advice-text">"${res.conseil}"</div></div>`;
+  }
+
+  return html;
+}
+
+// ══════════════════════════════════════════════════════════════
+// RUN ANALYSIS (onglet Analyser)
+// ══════════════════════════════════════════════════════════════
+async function runAnalysis() {
+  const symbol  = document.getElementById('pairSelect').value;
+  const capital = parseFloat(document.getElementById('capitalInput').value) || 1000;
+  const btn     = document.getElementById('btnAnalyse');
+  const out     = document.getElementById('analysisResult');
+
+  btn.disabled = true;
+  btn.textContent = 'Chargement...';
+  out.innerHTML = `<div class="loading-box"><div class="spinner-big"></div><div class="loading-text">Récupération des données…</div></div>`;
+
+  try {
+    const range   = RANGE_MAP[state.tf] || '1y';
+    const candles = await fetchCandles(symbol, state.tf, range);
+    out.querySelector('.loading-text').textContent = 'Calcul des indicateurs…';
+    const result  = traderBrain(symbol, candles, capital, state.riskPct);
+    out.innerHTML = renderResult(result, symbol);
+  } catch(e) {
+    out.innerHTML = `<div class="error-box">⚠ Erreur : ${e.message}<br><br>Vérifie ta connexion internet et réessaie.</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⟳ Analyser';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// RUN SCAN (onglet Scanner)
+// ══════════════════════════════════════════════════════════════
+async function runScan() {
+  const btn = document.getElementById('btnScan');
+  const out = document.getElementById('scanResult');
+  const capital = 1000;
+
+  btn.disabled = true;
+  btn.textContent = 'Scan en cours…';
+
+  const total = FOREX_SCAN_PAIRS.length;
+  out.innerHTML = `
+    <div class="progress-wrap">
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="pgBar" style="width:0%"></div></div>
+      <div class="progress-label" id="pgLabel">0 / ${total} paires analysées…</div>
+    </div>`;
+
+  const results = [];
+  for (let i = 0; i < FOREX_SCAN_PAIRS.length; i++) {
+    const sym = FOREX_SCAN_PAIRS[i];
+    document.getElementById('pgLabel').textContent = `${i+1} / ${total} — ${PAIR_INFO[sym]?.name||sym}…`;
+    document.getElementById('pgBar').style.width = `${Math.round((i+1)/total*100)}%`;
+    try {
+      const range   = RANGE_MAP[state.scanTf] || '1y';
+      const candles = await fetchCandles(sym, state.scanTf, range);
+      const res     = traderBrain(sym, candles, capital, 2);
+      results.push({ sym, res });
+    } catch(e) {
+      results.push({ sym, res:null, err: e.message });
+    }
+    if (i < FOREX_SCAN_PAIRS.length-1) await delay(600);
+  }
+
+  // Tri : ACHAT/VENTE d'abord, puis par score
+  results.sort((a,b)=>{
+    const ord = {ACHAT:0,VENTE:1,ATTENDRE:2};
+    const sa = a.res?.signal||'ATTENDRE', sb = b.res?.signal||'ATTENDRE';
+    if (ord[sa]!==ord[sb]) return ord[sa]-ord[sb];
+    return (b.res?.score||0)-(a.res?.score||0);
+  });
+
+  const nb_a = results.filter(r=>r.res?.signal==='ACHAT').length;
+  const nb_v = results.filter(r=>r.res?.signal==='VENTE').length;
+  const nb_w = results.filter(r=>r.res?.signal==='ATTENDRE'||!r.res).length;
+
+  let html = `
+  <div class="scan-summary">
+    <div class="sum-box"><div class="sum-val c-green">${nb_a}</div><div class="sum-label">Achat</div></div>
+    <div class="sum-box"><div class="sum-val c-red">${nb_v}</div><div class="sum-label">Vente</div></div>
+    <div class="sum-box"><div class="sum-val c-gold">${nb_w}</div><div class="sum-label">Attendre</div></div>
+  </div>
+  <div class="card">
+    <div class="scan-table-wrap"><table>
+      <thead><tr><th>Paire</th><th>Signal</th><th>Score</th><th>Tendance</th><th>RSI</th></tr></thead>
+      <tbody>`;
+
+  results.forEach(({sym,res,err})=>{
+    const info = PAIR_INFO[sym]||{name:sym};
+    if (!res) {
+      html+=`<tr><td>${info.name}</td><td colspan="4" style="color:var(--muted);font-size:.7rem">${err||'Erreur'}</td></tr>`;
+      return;
+    }
+    const sigLabel = res.signal==='ACHAT'?'<span style="color:#00d084">▲ ACHAT</span>':res.signal==='VENTE'?'<span style="color:#ff4757">▼ VENTE</span>':'<span style="color:#f0b429">◆</span>';
+    const dirLabel = res.direction==='HAUSSE'?'<span style="color:#00d084">▲</span>':res.direction==='BAISSE'?'<span style="color:#ff4757">▼</span>':'<span style="color:#f0b429">—</span>';
+    const rowCls   = res.signal==='ACHAT'?'row-buy':res.signal==='VENTE'?'row-sell':'';
+    const scoreColor=res.score>=70?'#00d084':res.score>=50?'#f0b429':'#ff4757';
+    html+=`<tr class="${rowCls}"><td style="font-weight:700">${info.name}</td><td>${sigLabel}</td><td style="color:${scoreColor};font-weight:700">${res.score}</td><td>${dirLabel}</td><td>${res.rsiV?.toFixed(1)??'—'}</td></tr>`;
+  });
+
+  html += `</tbody></table></div></div>`;
+  out.innerHTML = html;
+  btn.disabled = false;
+  btn.textContent = '🔍 Scanner toutes les paires';
+}
+
+function delay(ms) { return new Promise(r=>setTimeout(r,ms)); }
+</script>
+</body>
+</html>

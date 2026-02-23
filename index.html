@@ -24,8 +24,8 @@ html{font-size:14px;-webkit-font-smoothing:antialiased}
   --body:  #b4b4b4;
   --main:  #e8e8e8;
   --white: #ffffff;
-  --buy:   #ffffff;
-  --sell:  #c8c8c8;
+  --buy:   #00c896;
+  --sell:  #ff4d6a;
   --wait:  #606060;
   --sans:  'Archivo Narrow', sans-serif;
   --mono:  'JetBrains Mono', monospace;
@@ -295,7 +295,10 @@ body{
   letter-spacing:.06em;
 }
 .sig-bar{height:2px;background:var(--b1);width:160px;border-radius:1px;overflow:hidden}
-.sig-bar-fill{height:100%;background:var(--white);transition:width .5s ease;border-radius:1px}
+.sig-bar-fill{height:100%;background:var(--mid);transition:width .5s ease;border-radius:1px}
+.sig-bar-fill.fill-buy{background:var(--buy)}
+.sig-bar-fill.fill-sell{background:var(--sell)}
+.sig-bar-fill.fill-wait{background:var(--dim)}
 .sig-force{font-family:var(--mono);font-size:.58rem;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
 
 /* Data table */
@@ -502,8 +505,8 @@ td{
   color:var(--body);
 }
 td:not(:first-child){text-align:right}
-tr.r-b td:first-child{border-left:2px solid var(--white)}
-tr.r-s td:first-child{border-left:2px solid var(--b3)}
+tr.r-b td:first-child{border-left:2px solid var(--buy)}
+tr.r-s td:first-child{border-left:2px solid var(--sell)}
 tr.r-w td:first-child{border-left:2px solid var(--b1);padding-left:6px}
 </style>
 </head>
@@ -894,9 +897,15 @@ function renderResult(res,symbol){
   const d=info.dec;
   const sigCls=res.signal==='ACHAT'?'buy':res.signal==='VENTE'?'sell':'wait';
   const sigLbl=res.signal==='ACHAT'?'▲ ACHAT':res.signal==='VENTE'?'▼ VENTE':'◆ ATTENDRE';
+  const barFillCls=res.signal==='ACHAT'?'fill-buy':res.signal==='VENTE'?'fill-sell':'fill-wait';
   const forceLabel=res.score>=80?'FORT':res.score>=60?'MOYEN':'FAIBLE';
+  const dirColor=res.direction==='HAUSSE'?'var(--buy)':res.direction==='BAISSE'?'var(--sell)':'var(--dim)';
   const dirStr=res.direction==='HAUSSE'?'▲ HAUSSE':res.direction==='BAISSE'?'▼ BAISSE':'— NEUTRE';
-  const macdSig=res.macdV>res.macdSV&&res.macdHV>0?'HAUSSIER':res.macdV<res.macdSV&&res.macdHV<0?'BAISSIER':'NEUTRE';
+  const macdIsBull=res.macdV>res.macdSV&&res.macdHV>0,macdIsBear=res.macdV<res.macdSV&&res.macdHV<0;
+  const macdSig=macdIsBull?'HAUSSIER':macdIsBear?'BAISSIER':'NEUTRE';
+  const macdColor=macdIsBull?'var(--buy)':macdIsBear?'var(--sell)':'var(--dim)';
+  const planBorder=res.signal==='ACHAT'?'var(--buy)':res.signal==='VENTE'?'var(--sell)':'var(--b2)';
+  const adviceBorder=res.signal==='ACHAT'?'var(--buy)':res.signal==='VENTE'?'var(--sell)':'var(--b3)';
   const tf=state.tf;
   const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 
@@ -910,7 +919,7 @@ function renderResult(res,symbol){
       <div class="sig-val ${sigCls}">${sigLbl}</div>
       <div class="sig-score-wrap">
         <div class="sig-score-txt">Confiance &nbsp;${res.score}/100</div>
-        <div class="sig-bar"><div class="sig-bar-fill" style="width:${res.score}%"></div></div>
+        <div class="sig-bar"><div class="sig-bar-fill ${barFillCls}" style="width:${res.score}%"></div></div>
         <div class="sig-force">Force &nbsp;${forceLabel}</div>
       </div>
     </div>
@@ -920,12 +929,12 @@ function renderResult(res,symbol){
   h+=`
   <table class="data-table">
     <tr><td>Prix</td><td class="v-w">${res.price?.toFixed(d)}</td></tr>
-    <tr><td>Tendance</td><td>${dirStr}</td></tr>
+    <tr><td>Tendance</td><td style="color:${dirColor};font-weight:600">${dirStr}</td></tr>
     <tr><td>MA20</td><td>${res.ma20?.toFixed(d)}</td></tr>
     <tr><td>MA50</td><td>${res.ma50?.toFixed(d)}</td></tr>
     <tr><td>MA200</td><td class="v-g">${res.ma200?.toFixed(d)}</td></tr>
     <tr><td>RSI 14</td><td class="${res.rsiV>=70||res.rsiV<=30?'v-w':'v-g'}">${res.rsiV?.toFixed(1)}&nbsp;&nbsp;<span style="font-size:.65rem;color:var(--dim)">${res.rsiV>=70?'surachat':res.rsiV<=30?'survente':''}</span></td></tr>
-    <tr><td>MACD</td><td class="${macdSig!=='NEUTRE'?'v-w':'v-g'}">${macdSig}</td></tr>
+    <tr><td>MACD</td><td style="color:${macdColor};font-weight:${macdSig!=='NEUTRE'?'600':'400'}">${macdSig}</td></tr>
     <tr><td>ATR</td><td class="v-d">${res.atrV?.toFixed(d)}</td></tr>
   </table>`;
 
@@ -934,7 +943,7 @@ function renderResult(res,symbol){
     const rm=res.riskMgmt;
     const rrN=parseFloat(rm.rr);
     h+=`
-  <div class="plan-block">
+  <div class="plan-block" style="border-color:${planBorder}">
     <div class="plan-hdr">
       <div>
         <div class="plan-lot-num">${rm.lots}</div>
@@ -949,18 +958,18 @@ function renderResult(res,symbol){
     </div>
     <div class="level-row">
       <span class="level-tag">Stop Loss</span>
-      <span class="level-price" style="color:var(--mid)">${rm.sl}</span>
+      <span class="level-price" style="color:var(--sell)">${rm.sl}</span>
       <span class="level-info">${rm.slPips} pips</span>
     </div>
     <div class="level-row">
       <span class="level-tag">TP 1</span>
-      <span class="level-price" style="color:var(--white)">${rm.tp1}</span>
-      <span class="level-info">+${rm.profit1} € &nbsp;${rm.tp1Pips}p</span>
+      <span class="level-price" style="color:var(--buy)">${rm.tp1}</span>
+      <span class="level-info" style="color:var(--buy)">+${rm.profit1} € &nbsp;${rm.tp1Pips}p</span>
     </div>
     <div class="level-row">
       <span class="level-tag">TP 2</span>
-      <span class="level-price" style="color:var(--white)">${rm.tp2}</span>
-      <span class="level-info">+${rm.profit2} € &nbsp;${rm.tp2Pips}p</span>
+      <span class="level-price" style="color:var(--buy)">${rm.tp2}</span>
+      <span class="level-info" style="color:var(--buy)">+${rm.profit2} € &nbsp;${rm.tp2Pips}p</span>
     </div>
   </div>`;
   }
@@ -979,7 +988,7 @@ function renderResult(res,symbol){
   }
   // Conseil
   if(res.conseil){
-    h+=`<div class="advice"><div class="advice-tag">Trader Pro</div><div class="advice-txt">${res.conseil}</div></div>`;
+    h+=`<div class="advice" style="border-left-color:${adviceBorder}"><div class="advice-tag">Trader Pro</div><div class="advice-txt">${res.conseil}</div></div>`;
   }
 
   h+='</div>';
@@ -1043,9 +1052,9 @@ async function runScan(){
   const nb_w=results.filter(r=>r.res?.signal==='ATTENDRE'||!r.res).length;
   let html=`
   <div class="scan-sum">
-    <div class="scan-sum-cell"><div class="scan-sum-num">${nb_a}</div><div class="scan-sum-label">Achat</div></div>
-    <div class="scan-sum-cell"><div class="scan-sum-num">${nb_v}</div><div class="scan-sum-label">Vente</div></div>
-    <div class="scan-sum-cell"><div class="scan-sum-num">${nb_w}</div><div class="scan-sum-label">Attendre</div></div>
+    <div class="scan-sum-cell"><div class="scan-sum-num" style="color:var(--buy)">${nb_a}</div><div class="scan-sum-label">Achat</div></div>
+    <div class="scan-sum-cell"><div class="scan-sum-num" style="color:var(--sell)">${nb_v}</div><div class="scan-sum-label">Vente</div></div>
+    <div class="scan-sum-cell"><div class="scan-sum-num" style="color:var(--dim)">${nb_w}</div><div class="scan-sum-label">Attendre</div></div>
   </div>
   <div class="scan-tbl-wrap"><table>
     <thead><tr><th>Paire</th><th>Signal</th><th>Score</th><th>Dir.</th><th>RSI</th></tr></thead>
@@ -1053,11 +1062,11 @@ async function runScan(){
   results.forEach(({sym,res,err})=>{
     const info=PAIR_INFO[sym]||{name:sym};
     if(!res){html+=`<tr class="r-w"><td>${info.name}</td><td colspan="4" style="color:var(--dim);font-size:.65rem">${err||'Err'}</td></tr>`;return;}
-    const sigStr=res.signal==='ACHAT'?`<span style="color:var(--white);font-weight:600">▲ ACHAT</span>`:res.signal==='VENTE'?`<span style="color:var(--sell)">▼ VENTE</span>`:`<span style="color:var(--dim)">◆</span>`;
-    const dirStr=res.direction==='HAUSSE'?'▲':res.direction==='BAISSE'?'▼':'—';
+    const sigStr=res.signal==='ACHAT'?`<span style="color:var(--buy);font-weight:600">▲ ACHAT</span>`:res.signal==='VENTE'?`<span style="color:var(--sell);font-weight:600">▼ VENTE</span>`:`<span style="color:var(--dim)">◆</span>`;
+    const dirStr=res.direction==='HAUSSE'?`<span style="color:var(--buy)">▲</span>`:res.direction==='BAISSE'?`<span style="color:var(--sell)">▼</span>`:`<span style="color:var(--dim)">—</span>`;
     const rowCls=res.signal==='ACHAT'?'r-b':res.signal==='VENTE'?'r-s':'r-w';
-    const sc=res.score>=70?'var(--white)':res.score>=50?'var(--mid)':'var(--dim)';
-    html+=`<tr class="${rowCls}"><td style="font-weight:600;color:var(--main)">${info.name}</td><td>${sigStr}</td><td style="color:${sc};font-weight:600">${res.score}</td><td style="color:var(--mid)">${dirStr}</td><td style="color:var(--mid)">${res.rsiV?.toFixed(1)??'—'}</td></tr>`;
+    const sc=res.signal==='ACHAT'?'var(--buy)':res.signal==='VENTE'?'var(--sell)':res.score>=50?'var(--mid)':'var(--dim)';
+    html+=`<tr class="${rowCls}"><td style="font-weight:600;color:var(--main)">${info.name}</td><td>${sigStr}</td><td style="color:${sc};font-weight:600">${res.score}</td><td>${dirStr}</td><td style="color:var(--mid)">${res.rsiV?.toFixed(1)??'—'}</td></tr>`;
   });
   html+=`</tbody></table></div>`;
   out.innerHTML=html;

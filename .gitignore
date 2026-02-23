@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Environnements virtuels
+venv/
+env/
+.venv/
+
+# macOS
+.DS_Store
+
+# Données temporaires
+*.log
